@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from typing import TYPE_CHECKING, Literal
 
@@ -84,6 +85,10 @@ class User:
         The type of profile interstitial.
     withheld_in_countries : list[:class:`str`]
         Countries where the user's content is withheld.
+    automated : :class:`bool`
+        Indicates if the user is automated.
+    automated_by : :class:`str`
+        The user who automated the account.
     """
 
     def __init__(self, client: Client, data: dict) -> None:
@@ -123,6 +128,13 @@ class User:
         self.translator_type: str = legacy['translator_type']
         self.withheld_in_countries: list[str] = legacy['withheld_in_countries']
         self.protected: bool = legacy.get('protected', False)
+        # Detect automation based on affiliates_highlighted_label and description
+        label = data.get('affiliates_highlighted_label', {}).get('label', {})
+        long_description = label.get('longDescription', {}).get('text', "")
+        self.automated: bool = label.get('description', "").lower().strip() == 'automated'
+        self.automated_by: str = None
+        if self.automated and re.search('automated by', long_description, re.IGNORECASE):
+            self.automated_by: str = re.sub('automated by ', '', long_description, flags=re.IGNORECASE).replace('@', '').strip()
 
     @property
     def created_at_datetime(self) -> datetime:
